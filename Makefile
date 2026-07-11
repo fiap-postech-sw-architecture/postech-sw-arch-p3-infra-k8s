@@ -32,5 +32,7 @@ apply: ## Cria o cluster (~10-15 min). Lembre do destroy pós-demo!
 destroy: ## OBRIGATÓRIO pós-demo (budget pequeno, ADR-026)
 	terraform destroy
 
+# Fallback sem state local:
+#   aws eks update-kubeconfig --name pytstop-p3 --profile academy --region us-east-1
 kubeconfig: ## Funde o kubeconfig do cluster no ~/.kube/config
-	aws eks update-kubeconfig --name pytstop-p3 --profile academy --region us-east-1
+	terraform output -raw update_kubeconfig_command | sh

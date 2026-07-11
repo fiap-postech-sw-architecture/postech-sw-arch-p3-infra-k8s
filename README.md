@@ -16,7 +16,7 @@ O **kind continua o alvo local** de desenvolvimento e demo sem custo.
 ## Tecnologias
 
 - **Terraform** >= 1.9, provider `hashicorp/aws ~> 5.0`
-- **Amazon EKS** — Kubernetes gerenciado, versão 1.31 (variável)
+- **Amazon EKS** — Kubernetes gerenciado, versão 1.34 (variável)
 - **Node group gerenciado** — 2× `t3.medium`, disco 20 GB, scaling 2/2/3
 - **AWS Academy Learner Lab** — conta institucional FIAP, região `us-east-1`
 
@@ -70,6 +70,9 @@ make fmt     # formata os .tf in-place
 
 ## Deploy (exige sessão do Academy ativa)
 
+Ordem multi-repo: `infra-db → infra-k8s → app (repo p3) → lambda/gateway` —
+o gateway precisa da URL pública do app (o ADR-033 receberá adendo).
+
 1. **Start Lab** no AWS Academy e copie as credenciais para o profile
    `academy` do `~/.aws/credentials` (runbook).
 2. Provisione e conecte:
@@ -100,6 +103,9 @@ O _End Lab_ pausa EC2, mas **não** zera o custo do control plane — destrua.
 - `cd.yml` — `homolog` → `terraform plan`; `main` → `terraform apply`.
   Secrets `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN`
   re-gravados a cada sessão do lab (ver comentários no workflow).
+- Push em `homolog` roda `terraform plan` (estágio de homologação de infra);
+  apply automático só na `main`: com um único Learner Lab e budget mínimo,
+  ambiente homolog duplicado de infra é inviável (adendo do ADR-033).
 
 ## Status e pendências
 
@@ -117,3 +123,9 @@ O _End Lab_ pausa EC2, mas **não** zera o custo do control plane — destrua.
       depende dele).
 - [ ] **Overlay EKS no repo principal** — storage class, exposição e
       `ENVIRONMENT` do alvo cloud vivem no `postech-sw-arch-p3` (ADR-030).
+- [ ] **Hipótese não validada: trust policy da LabRole** — assume-se que ela
+      permite `eks.amazonaws.com`; só confirmável no primeiro `plan`/`apply`
+      com credenciais do Academy.
+
+Dockerfile/Swagger: n/a — repo 100% Terraform, sem artefato conteinerizável
+nem API própria.

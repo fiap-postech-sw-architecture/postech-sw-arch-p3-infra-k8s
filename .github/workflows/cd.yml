@@ -18,6 +18,13 @@
 # local, o apply autoritativo é o da máquina do dev; este job existe para
 # cumprir o requisito de CI/CD do repo de infra e ficará correto se um
 # backend remoto for adotado (ver "Status e pendências" no README).
+# Duas consequências práticas:
+# a) apply na main com a infra já de pé (criada localmente) falha com
+#    "cluster already exists" — para demonstrar o CD no vídeo, destruir
+#    a infra local ANTES do push na main.
+# b) apply em conta limpa cria infra órfã (sem state em lugar nenhum) —
+#    remoção só via console/CLI. O cenário de risco é um push acidental
+#    na main durante uma sessão de lab ativa.
 
 name: cd
 
@@ -50,7 +57,7 @@ jobs:
 
       - name: terraform plan
         run: |
-          terraform init
+          terraform init -input=false
           terraform plan -input=false
 
   apply:
@@ -65,5 +72,5 @@ jobs:
 
       - name: terraform apply
         run: |
-          terraform init
+          terraform init -input=false
           terraform apply -input=false -auto-approve

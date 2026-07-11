@@ -1,0 +1,32 @@
+# CI do repo de infra K8s: só o que roda sem credenciais AWS
+# (fmt-check + validate). Plan/apply ficam no cd.yml.
+#
+# Espelho exato do `make gate` — se o gate local passa, o CI passa.
+
+name: ci
+
+on:
+  push:
+    branches: [main, homolog]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.x"
+
+      - name: fmt-check
+        run: terraform fmt -check -recursive
+
+      - name: validate
+        run: |
+          terraform init -backend=false
+          terraform validate

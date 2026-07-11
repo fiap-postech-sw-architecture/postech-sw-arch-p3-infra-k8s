@@ -1,0 +1,7 @@
+# Copie para terraform.tfvars se precisar sobrescrever algum default.
+# Os defaults em variables.tf já servem para a demo — este arquivo
+# existe só para documentar o formato (terraform.tfvars é gitignored).
+
+# aws_profile        = "academy"
+# cluster_name       = "pytstop-p3"
+# kubernetes_version = "1.31"

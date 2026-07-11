@@ -1,0 +1,16 @@
+# Diretorio de trabalho do Terraform (providers baixados no init)
+.terraform/
+
+# Estado local — nunca versionar (pode conter valores sensiveis)
+*.tfstate
+*.tfstate.*
+
+# Variaveis locais (o .example versionado documenta o formato)
+terraform.tfvars
+*.auto.tfvars
+
+# Plans salvos
+*.tfplan
+
+# .terraform.lock.hcl NAO e ignorado de proposito: o lock file pina as
+# versoes exatas dos providers e deve ser commitado.

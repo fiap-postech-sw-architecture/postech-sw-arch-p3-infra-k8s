@@ -1,0 +1,69 @@
+# CD do cluster EKS: homolog -> terraform plan; main -> terraform apply.
+#
+# ATENÇÃO — duas limitações operacionais (ADR-026, repo postech-sw-arch-p3):
+#
+# 1. Credenciais ROTATIVAS: cada Start Lab do AWS Academy emite novo trio
+#    access key + secret + session token. Os secrets AWS_* deste repo
+#    precisam ser re-gravados a cada sessão ANTES de qualquer run —
+#    passo 1 do runbook `aws-academy-setup.md` (repo postech-sw-arch-p3-docs).
+#    Sem sessão ativa, qualquer run falha com credencial expirada.
+#
+# 2. Cota do GitHub Actions da organização ESGOTADA no momento da
+#    escrita: este pipeline documenta o fluxo exigido pelo challenge, mas
+#    a operação real é o caminho local equivalente do runbook
+#    (make plan / make apply da máquina do dev, mesma sequência de steps).
+#
+# State LOCAL (sem backend remoto, ADR-026): um apply via Actions gera
+# state no runner efêmero e o perde ao fim do job. Enquanto o state for
+# local, o apply autoritativo é o da máquina do dev; este job existe para
+# cumprir o requisito de CI/CD do repo de infra e ficará correto se um
+# backend remoto for adotado (ver "Status e pendências" no README).
+
+name: cd
+
+on:
+  push:
+    branches: [main, homolog]
+
+permissions:
+  contents: read
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+  AWS_DEFAULT_REGION: us-east-1
+  # O provider usa profile "academy" localmente; no CI as credenciais vêm
+  # do ambiente, então o profile é sobrescrito para não exigir ~/.aws.
+  TF_VAR_aws_profile: ""
+
+jobs:
+  plan:
+    if: github.ref == 'refs/heads/homolog'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.x"
+
+      - name: terraform plan
+        run: |
+          terraform init
+          terraform plan -input=false
+
+  apply:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.x"
+
+      - name: terraform apply
+        run: |
+          terraform init
+          terraform apply -input=false -auto-approve

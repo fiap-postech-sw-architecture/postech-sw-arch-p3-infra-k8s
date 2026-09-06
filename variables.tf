@@ -1,9 +1,3 @@
-variable "aws_profile" {
-  description = "Profile AWS no ~/.aws/credentials com as credenciais da sessão do Learner Lab (re-gravadas a cada Start Lab — runbook aws-academy-setup.md)."
-  type        = string
-  default     = "academy"
-}
-
 variable "cluster_name" {
   description = "Nome do cluster EKS. Também referenciado pelo overlay EKS e pelo pipeline do repo principal."
   type        = string

@@ -14,11 +14,10 @@ output "cluster_security_group_id" {
 }
 
 output "update_kubeconfig_command" {
-  description = "Comando que funde o kubeconfig do cluster no ~/.kube/config (usado pelo make kubeconfig)."
+  description = "Comando que funde o kubeconfig do cluster no ~/.kube/config."
   value = format(
-    "aws eks update-kubeconfig --name %s --profile %s --region us-east-1",
+    "aws eks update-kubeconfig --name %s --region us-east-1",
     aws_eks_cluster.pytstop.name,
-    var.aws_profile,
   )
 }
 

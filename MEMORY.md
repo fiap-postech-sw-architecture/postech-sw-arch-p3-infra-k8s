@@ -15,6 +15,7 @@ Updated by AI agents at task end per `postech-ai-helper/ai/canonical/task-end-re
 
 ## Gotchas
 
+- 2026-09-07 - Filtrar subnets do EKS apenas por VPC/AZ passa a incluir as subnets privadas criadas no mesmo apply no refresh seguinte; `data.aws_subnets.default` exige `default-for-az=true` para manter cluster e node group nas subnets publicas originais com egress
 - 2026-09-06 - Learner Lab nega `iam:GetRole`; usar o account ID de `aws_caller_identity` para formar o ARN da LabRole existente, sem `data aws_iam_role` e sem criar IAM
 
 ## Tech debt / TODO

@@ -44,4 +44,12 @@ run "private_network" {
     condition     = length(aws_route_table_association.private) == 2
     error_message = "Cada subnet privada deve usar a route table privada."
   }
+
+  assert {
+    condition = contains([
+      for filter in data.aws_subnets.default.filter :
+      "${filter.name}:${join(",", filter.values)}"
+    ], "default-for-az:true")
+    error_message = "EKS e node group devem usar somente as subnets default publicas."
+  }
 }

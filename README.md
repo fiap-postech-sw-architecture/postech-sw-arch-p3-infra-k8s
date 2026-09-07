@@ -67,6 +67,8 @@ flowchart TB
   versionamento e lock nativo (`use_lockfile`).
 - **Sem NAT Gateway**: `172.31.240.0/24` em `us-east-1a` e
   `172.31.241.0/24` em `us-east-1b` usam uma route table sem rota default.
+- **Nodes nas subnets públicas originais**: o filtro `default-for-az=true`
+  impede que EKS e node group redescubram as subnets privadas da integração.
 - **Descoberta privada**: as subnets usam as tags
   `kubernetes.io/role/internal-elb=1` e
   `kubernetes.io/cluster/pytstop-p3=shared`; elas são exclusivas do NLB

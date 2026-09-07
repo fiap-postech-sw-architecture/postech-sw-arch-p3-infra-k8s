@@ -8,7 +8,7 @@ e
 [ADR-030](https://github.com/fiap-postech-sw-architecture/postech-sw-arch-p3/blob/main/docs/arquitetura/adr/fase3/030-cluster-kubernetes-eks.md)
 do repo principal.
 
-**Escopo deste repo: só o cluster e seus addons de base.** O deploy da
+**Escopo deste repo: cluster, rede privada e addons de base.** O deploy da
 aplicação (manifests `k8s/`, overlay EKS, observabilidade) é responsabilidade
 do repo principal [`postech-sw-arch-p3`](https://github.com/fiap-postech-sw-architecture/postech-sw-arch-p3).
 O **kind continua o alvo local** de desenvolvimento e demo sem custo.
@@ -19,6 +19,7 @@ O **kind continua o alvo local** de desenvolvimento e demo sem custo.
 - **Amazon EKS** — Kubernetes gerenciado, versão 1.34 (variável)
 - **Node group gerenciado** — 2× `t3.medium`, disco 20 GB, scaling 2/2/3
 - **AWS Academy Learner Lab** — conta institucional FIAP, região `us-east-1`
+- **Rede privada** — duas subnets `/24`, sem rota default ou NAT Gateway
 
 ## Arquitetura
 
@@ -38,7 +39,8 @@ flowchart TB
                 ms["metrics-server<br/>(HPA depende dele)"]
             end
         end
-        vpc["VPC default + subnets<br/>(data sources)"]
+        vpc["VPC default + subnets públicas<br/>(data sources)"]
+        private["2 subnets privadas /24<br/>NLB interno + VPC Link"]
     end
 
     subgraph repo_app["Repo principal postech-sw-arch-p3"]
@@ -47,6 +49,7 @@ flowchart TB
     end
 
     vpc --> eks
+    vpc --> private
     cp --> ng
     repo_app -. "kubectl apply<br/>(pipeline do app)" .-> eks
 ```
@@ -62,18 +65,21 @@ flowchart TB
 - **State remoto sem DynamoDB**: backend S3 no bucket
   `pytstop-terraform-state-924563550535`, chave `eks/terraform.tfstate`, com
   versionamento e lock nativo (`use_lockfile`).
+- **Sem NAT Gateway**: `172.31.240.0/24` em `us-east-1a` e
+  `172.31.241.0/24` em `us-east-1b` usam uma route table sem rota default.
 
 ## Execução local (sem AWS)
 
 ```bash
-make gate    # fmt-check + init -backend=false + validate — mesmo check do CI
+make gate    # fmt-check + validate + terraform test — mesmo check do CI
 make fmt     # formata os .tf in-place
 ```
 
 ## Deploy (exige sessão do Academy ativa)
 
-Ordem multi-repo: `infra-db → infra-k8s → app (repo p3) → lambda/gateway` —
-o gateway precisa da URL pública do app (o ADR-033 receberá adendo).
+Ordem multi-repo: `infra-db → infra-k8s → app (repo p3) → lambda/gateway`.
+O app cria o NLB interno; o último passo recebe o ARN do listener e cria o
+VPC Link.
 
 1. **Start Lab** no AWS Academy e configure as credenciais na cadeia padrão da
    AWS CLI (runbook).
@@ -84,6 +90,7 @@ make plan          # revisa o que será criado
 make apply         # cria o cluster (~10-15 min)
 make kubeconfig    # aws eks update-kubeconfig --name pytstop-p3 --region us-east-1
 kubectl get nodes  # 2 nodes Ready
+terraform output private_subnet_ids
 ```
 
 3. O deploy da aplicação é feito pelo repo principal (overlay EKS).
@@ -91,20 +98,23 @@ kubectl get nodes  # 2 nodes Ready
 Os comandos locais e o CD compartilham o mesmo state remoto. Não inicie
 `plan`, `apply` ou `destroy` local enquanto o workflow de CD estiver rodando.
 
-## Aviso de budget — destroy pós-demo é OBRIGATÓRIO
+## Aviso de budget
 
 O budget do Learner Lab é pequeno e o esgotamento **encerra a conta**
 definitivamente. Control plane do EKS + 2 nodes consomem crédito por hora:
 
 ```bash
-make destroy   # sempre, ao fim de cada demo/validação
+make destroy   # ao final da janela de preparação e gravação
 ```
 
-O _End Lab_ pausa EC2, mas **não** zera o custo do control plane — destrua.
+O _End Lab_ pausa EC2, mas **não** zera o custo do control plane. A
+infraestrutura pode permanecer durante a preparação e gravação, por no máximo
+sete dias; depois disso, destrua EKS, NLB e VPC Link na ordem documentada.
 
 ## CI/CD
 
-- `ci.yml` — `fmt-check` + `validate` em todo push/PR (não toca a AWS).
+- `ci.yml` — `fmt-check` + `validate` + `terraform test` em todo push/PR
+  (não toca a AWS).
 - `cd.yml` — `homolog` → `terraform plan`; `main` → `terraform apply`.
   As branches são serializadas sobre o único state S3 com lock nativo.
   Secrets `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN`
@@ -116,7 +126,7 @@ O _End Lab_ pausa EC2, mas **não** zera o custo do control plane — destrua.
 ## Status e pendências
 
 - [ ] **Primeiro provisionamento AWS** — nenhum `plan`/`apply` real foi
-      executado; `fmt` + `validate` estão verdes localmente.
+      executado; `fmt`, `validate` e testes mockados estão verdes localmente.
 - [ ] **metrics-server como addon EKS** — provisionado como community addon
       (`addons.tf`); se a versão do cluster não o oferecer, usar o fallback
       via `kubectl` documentado no próprio arquivo (o HPA do repo principal

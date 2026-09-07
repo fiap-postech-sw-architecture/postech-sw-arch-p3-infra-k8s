@@ -5,7 +5,7 @@
 # `make gate` roda só o que não precisa de AWS (fmt + validate) — é o
 # mesmo check do CI e deve passar antes de qualquer commit.
 
-.PHONY: fmt fmt-check init validate gate plan apply destroy kubeconfig
+.PHONY: fmt fmt-check init validate test gate plan apply destroy kubeconfig
 
 fmt: ## Formata os arquivos .tf in-place
 	terraform fmt -recursive
@@ -19,17 +19,20 @@ init: ## Init sem backend para validacao offline
 validate: init ## Valida sintaxe e referências (não toca a AWS)
 	terraform validate
 
-gate: fmt-check validate ## Gate local = CI: fmt-check + validate
+test: init ## Valida contratos Terraform com provider mockado
+	terraform test
+
+gate: fmt-check validate test ## Gate local = CI: fmt-check + validate + test
 
 plan: ## Plan contra a conta Academy (exige sessão de lab ativa)
 	terraform init
 	terraform plan
 
-apply: ## Cria o cluster (~10-15 min). Lembre do destroy pós-demo!
+apply: ## Cria o cluster (~10-15 min) para a janela de preparação/gravação
 	terraform init
 	terraform apply
 
-destroy: ## OBRIGATÓRIO pós-demo (budget pequeno, ADR-026)
+destroy: ## Remove a infra cobrada ao final da gravação (budget, ADR-026)
 	terraform init
 	terraform destroy
 

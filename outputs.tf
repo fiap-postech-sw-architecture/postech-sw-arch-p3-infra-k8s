@@ -13,6 +13,11 @@ output "cluster_security_group_id" {
   value       = aws_eks_cluster.pytstop.vpc_config[0].cluster_security_group_id
 }
 
+output "private_subnet_ids" {
+  description = "Subnets privadas usadas pelo NLB interno e pelo VPC Link."
+  value       = [for subnet in aws_subnet.private : subnet.id]
+}
+
 output "update_kubeconfig_command" {
   description = "Comando que funde o kubeconfig do cluster no ~/.kube/config."
   value = format(

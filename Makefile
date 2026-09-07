@@ -2,7 +2,7 @@
 # sessão do AWS Academy ativa e credenciais na cadeia padrao
 # (runbook aws-academy-setup.md, repo postech-sw-arch-p3-docs).
 #
-# `make gate` roda só o que não precisa de AWS (fmt + validate) — é o
+# `make gate` roda só o que não precisa de AWS (fmt-check + validate + test) — é o
 # mesmo check do CI e deve passar antes de qualquer commit.
 
 .PHONY: fmt fmt-check init validate test gate plan apply destroy kubeconfig

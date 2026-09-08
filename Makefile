@@ -1,11 +1,11 @@
 # Operação do cluster EKS da fase 3. Pré-requisitos para plan/apply:
-# sessão do AWS Academy ativa e credenciais copiadas para o profile
-# "academy" (runbook aws-academy-setup.md, repo postech-sw-arch-p3-docs).
+# sessão do AWS Academy ativa e credenciais na cadeia padrao
+# (runbook aws-academy-setup.md, repo postech-sw-arch-p3-docs).
 #
-# `make gate` roda só o que não precisa de AWS (fmt + validate) — é o
+# `make gate` roda só o que não precisa de AWS (fmt-check + validate + test) — é o
 # mesmo check do CI e deve passar antes de qualquer commit.
 
-.PHONY: fmt fmt-check init validate gate plan apply destroy kubeconfig
+.PHONY: fmt fmt-check init validate test gate plan apply destroy kubeconfig
 
 fmt: ## Formata os arquivos .tf in-place
 	terraform fmt -recursive
@@ -13,26 +13,30 @@ fmt: ## Formata os arquivos .tf in-place
 fmt-check: ## Falha se algum .tf estiver fora do formato canônico
 	terraform fmt -check -recursive
 
-init: ## Init sem backend (state local; ADR-026)
+init: ## Init sem backend para validacao offline
 	terraform init -backend=false
 
 validate: init ## Valida sintaxe e referências (não toca a AWS)
 	terraform validate
 
-gate: fmt-check validate ## Gate local = CI: fmt-check + validate
+test: init ## Valida contratos Terraform com provider mockado
+	terraform test
+
+gate: fmt-check validate test ## Gate local = CI: fmt-check + validate + test
 
 plan: ## Plan contra a conta Academy (exige sessão de lab ativa)
 	terraform init
 	terraform plan
 
-apply: ## Cria o cluster (~10-15 min). Lembre do destroy pós-demo!
+apply: ## Cria o cluster (~10-15 min) para a janela de preparação/gravação
 	terraform init
 	terraform apply
 
-destroy: ## OBRIGATÓRIO pós-demo (budget pequeno, ADR-026)
+destroy: ## Remove a infra cobrada ao final da gravação (budget, ADR-026)
+	terraform init
 	terraform destroy
 
-# Fallback sem state local:
-#   aws eks update-kubeconfig --name pytstop-p3 --profile academy --region us-east-1
+# Fallback sem consultar o state:
+#   aws eks update-kubeconfig --name pytstop-p3 --region us-east-1
 kubeconfig: ## Funde o kubeconfig do cluster no ~/.kube/config
 	terraform output -raw update_kubeconfig_command | sh

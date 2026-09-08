@@ -6,18 +6,18 @@
 # fase 2 usou no AKS: o plan das cargas não pode depender de um cluster
 # criado no mesmo apply.
 #
-# Estado LOCAL de propósito (ADR-026): a vida útil do cluster é a janela
-# de uma sessão do AWS Academy (~4h) ou o intervalo até o `terraform
-# destroy` pós-demo. Um backend remoto (S3 + lock) sobreviveria ao state
-# que deveria proteger — complexidade sem benefício aqui.
-#
-# Credenciais via profile "academy" (var.aws_profile): o runbook
-# `aws-academy-setup.md` (repo postech-sw-arch-p3-docs) descreve como
-# copiar o trio access key + secret + session token de cada Start Lab
-# para o ~/.aws/credentials. As credenciais expiram com a sessão do lab.
+# Credenciais do Learner Lab via cadeia padrao, sempre em us-east-1.
 
 terraform {
-  required_version = ">= 1.9"
+  required_version = ">= 1.10"
+
+  backend "s3" {
+    bucket       = "pytstop-terraform-state-924563550535"
+    key          = "eks/terraform.tfstate"
+    region       = "us-east-1"
+    encrypt      = true
+    use_lockfile = true
+  }
 
   required_providers {
     aws = {
@@ -29,8 +29,7 @@ terraform {
 
 provider "aws" {
   # Região fixa da fase 3 (ADR-026): o Learner Lab só libera us-east-1.
-  region  = "us-east-1"
-  profile = var.aws_profile
+  region = "us-east-1"
 
   default_tags {
     tags = {

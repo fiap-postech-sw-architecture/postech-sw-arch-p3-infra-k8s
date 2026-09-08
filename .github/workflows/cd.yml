@@ -1,36 +1,21 @@
 # CD do cluster EKS: homolog -> terraform plan; main -> terraform apply.
-#
-# ATENÇÃO — duas limitações operacionais (ADR-026, repo postech-sw-arch-p3):
-#
-# 1. Credenciais ROTATIVAS: cada Start Lab do AWS Academy emite novo trio
+# Credenciais ROTATIVAS: cada Start Lab do AWS Academy emite novo trio
 #    access key + secret + session token. Os secrets AWS_* deste repo
 #    precisam ser re-gravados a cada sessão ANTES de qualquer run —
 #    passo 1 do runbook `aws-academy-setup.md` (repo postech-sw-arch-p3-docs).
 #    Sem sessão ativa, qualquer run falha com credencial expirada.
-#
-# 2. Cota do GitHub Actions da organização ESGOTADA no momento da
-#    escrita: este pipeline documenta o fluxo exigido pelo challenge, mas
-#    a operação real é o caminho local equivalente do runbook
-#    (make plan / make apply da máquina do dev, mesma sequência de steps).
-#
-# State LOCAL (sem backend remoto, ADR-026): um apply via Actions gera
-# state no runner efêmero e o perde ao fim do job. Enquanto o state for
-# local, o apply autoritativo é o da máquina do dev; este job existe para
-# cumprir o requisito de CI/CD do repo de infra e ficará correto se um
-# backend remoto for adotado (ver "Status e pendências" no README).
-# Duas consequências práticas:
-# a) apply na main com a infra já de pé (criada localmente) falha com
-#    "cluster already exists" — para demonstrar o CD no vídeo, destruir
-#    a infra local ANTES do push na main.
-# b) apply em conta limpa cria infra órfã (sem state em lugar nenhum) —
-#    remoção só via console/CLI. O cenário de risco é um push acidental
-#    na main durante uma sessão de lab ativa.
+# O state remoto e compartilhado; nao execute Terraform local enquanto
+# este workflow estiver em execucao.
 
 name: cd
 
 on:
   push:
     branches: [main, homolog]
+
+concurrency:
+  group: terraform-${{ github.repository }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -40,9 +25,6 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
   AWS_DEFAULT_REGION: us-east-1
-  # O provider usa profile "academy" localmente; no CI as credenciais vêm
-  # do ambiente, então o profile é sobrescrito para não exigir ~/.aws.
-  TF_VAR_aws_profile: ""
 
 jobs:
   plan:
@@ -53,7 +35,7 @@ jobs:
 
       - uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.9.x"
+          terraform_version: "1.10.x"
 
       - name: terraform plan
         run: |
@@ -68,7 +50,7 @@ jobs:
 
       - uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.9.x"
+          terraform_version: "1.10.x"
 
       - name: terraform apply
         run: |

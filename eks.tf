@@ -5,11 +5,13 @@
 #
 # IAM: restrição dura do AWS Academy (ADR-026) — o Terraform NÃO cria
 # roles/policies. Cluster role e node role apontam para a LabRole
-# pré-existente, referenciada por data source. Numa conta de produção
-# seriam roles mínimas separadas; aqui é uma concessão documentada.
+# pré-existente. Numa conta de produção seriam roles mínimas separadas;
+# aqui é uma concessão documentada.
 
-data "aws_iam_role" "lab_role" {
-  name = "LabRole"
+data "aws_caller_identity" "current" {}
+
+locals {
+  lab_role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/LabRole"
 }
 
 # Rede: VPC default da conta. O Learner Lab já a entrega com subnets
@@ -27,6 +29,10 @@ data "aws_subnets" "default" {
     values = [data.aws_vpc.default.id]
   }
   filter {
+    name   = "default-for-az"
+    values = ["true"]
+  }
+  filter {
     name   = "availability-zone"
     values = ["us-east-1a", "us-east-1b", "us-east-1c", "us-east-1d", "us-east-1f"]
   }
@@ -35,7 +41,7 @@ data "aws_subnets" "default" {
 resource "aws_eks_cluster" "pytstop" {
   name     = var.cluster_name
   version  = var.kubernetes_version
-  role_arn = data.aws_iam_role.lab_role.arn
+  role_arn = local.lab_role_arn
 
   vpc_config {
     subnet_ids = data.aws_subnets.default.ids
@@ -50,7 +56,7 @@ resource "aws_eks_cluster" "pytstop" {
 resource "aws_eks_node_group" "default" {
   cluster_name    = aws_eks_cluster.pytstop.name
   node_group_name = "${var.cluster_name}-nodes"
-  node_role_arn   = data.aws_iam_role.lab_role.arn
+  node_role_arn   = local.lab_role_arn
   subnet_ids      = data.aws_subnets.default.ids
 
   instance_types = ["t3.medium"]

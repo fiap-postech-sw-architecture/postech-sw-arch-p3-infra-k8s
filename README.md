@@ -131,17 +131,20 @@ sete dias; depois disso, destrua EKS, NLB e VPC Link na ordem documentada.
 
 ## Status e pendências
 
-- [ ] **Primeiro provisionamento AWS** — nenhum `plan`/`apply` real foi
-      executado; `fmt`, `validate` e testes mockados estão verdes localmente.
-- [ ] **metrics-server como addon EKS** — provisionado como community addon
-      (`addons.tf`); se a versão do cluster não o oferecer, usar o fallback
-      via `kubectl` documentado no próprio arquivo (o HPA do repo principal
-      depende dele).
-- [ ] **Overlay EKS no repo principal** — storage class, exposição e
-      `ENVIRONMENT` do alvo cloud vivem no `postech-sw-arch-p3` (ADR-030).
-- [ ] **Hipótese não validada: trust policy da LabRole** — assume-se que ela
-      permite `eks.amazonaws.com`; só confirmável no primeiro `plan`/`apply`
-      com credenciais do Academy.
+- [x] **Provisionamento AWS** — `terraform apply` automático na `main` em
+      07/09/2026 ([run 34178105568](https://github.com/fiap-postech-sw-architecture/postech-sw-arch-p3-infra-k8s/actions/runs/34178105568)):
+      EKS 1.34 `ACTIVE`, node group `ACTIVE` com 2 nodes, subnets privadas
+      para o NLB/VPC Link; state remoto no S3 com lock nativo.
+- [x] **metrics-server como addon EKS** — provisionado como community addon
+      (`addons.tf`) e validado no cluster real (HPA do repo principal ativo).
+- [x] **Hipótese da trust policy da LabRole** — confirmada no primeiro `apply`:
+      a role assume `eks.amazonaws.com` e serve ao cluster e ao node group.
+- [x] **Overlay EKS no repo principal** — storage class, exposição por NLB
+      interno e `ENVIRONMENT` do alvo cloud vivem no `postech-sw-arch-p3`
+      (ADR-030); deploy pelo `cd.yml` de lá.
+- [ ] **Desmontagem** — EKS e NLB não têm pausa sem cobrança: `terraform destroy`
+      na ordem inversa (lambda → app/NLB → este repo → RDS) e End Lab ao final
+      da gravação, com sessão ativa (`aws-academy-setup.md` no `p3-docs`).
 
 Dockerfile/Swagger: n/a — repo 100% Terraform, sem artefato conteinerizável
 nem API própria.

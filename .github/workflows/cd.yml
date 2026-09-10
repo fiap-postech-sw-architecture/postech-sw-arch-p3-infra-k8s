@@ -3,7 +3,8 @@
 #    access key + secret + session token. Os secrets AWS_* deste repo
 #    precisam ser re-gravados a cada sessão ANTES de qualquer run —
 #    passo 1 do runbook `aws-academy-setup.md` (repo postech-sw-arch-p3-docs).
-#    Sem sessão ativa, qualquer run falha com credencial expirada.
+#    Sem sessão ativa (token vencido) os passos AWS são pulados com aviso
+#    e o run termina verde; com sessão ativa o plan/apply roda de verdade.
 # O state remoto e compartilhado; nao execute Terraform local enquanto
 # este workflow estiver em execucao.
 
@@ -33,14 +34,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: hashicorp/setup-terraform@v3
+      # Secrets AWS ausentes OU vencidos (o token do Learner Lab dura ~4h e
+      # continua gravado depois da sessao) = pular os passos AWS com aviso em
+      # vez de falhar. Validacao via `sts get-caller-identity`, saida descartada.
+      - id: aws
+        name: Check AWS credentials
+        run: |
+          command -v aws >/dev/null || { echo "::error::aws cli ausente no runner; gate de credencial impossivel"; exit 1; }
+          if [ -z "${AWS_ACCESS_KEY_ID}" ] || [ -z "${AWS_SECRET_ACCESS_KEY}" ] || [ -z "${AWS_SESSION_TOKEN}" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "motivo=secrets AWS ausentes ou incompletos (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN)" >> "$GITHUB_OUTPUT"
+          elif aws sts get-caller-identity >/dev/null 2>&1; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "motivo=credenciais AWS vencidas ou invalidas (sessao do Academy encerrada)" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.aws.outputs.enabled == 'true'
+        uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.10.x"
 
-      - name: terraform plan
+      - if: steps.aws.outputs.enabled == 'true'
+        name: terraform plan
         run: |
           terraform init -input=false
           terraform plan -input=false
+      - if: steps.aws.outputs.enabled != 'true'
+        name: Notice (AWS skipped)
+        run: echo "::notice::passos AWS pulados — ${{ steps.aws.outputs.motivo }}"
 
   apply:
     if: github.ref == 'refs/heads/main'
@@ -48,11 +70,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: hashicorp/setup-terraform@v3
+      # Secrets AWS ausentes OU vencidos (o token do Learner Lab dura ~4h e
+      # continua gravado depois da sessao) = pular os passos AWS com aviso em
+      # vez de falhar. Validacao via `sts get-caller-identity`, saida descartada.
+      - id: aws
+        name: Check AWS credentials
+        run: |
+          command -v aws >/dev/null || { echo "::error::aws cli ausente no runner; gate de credencial impossivel"; exit 1; }
+          if [ -z "${AWS_ACCESS_KEY_ID}" ] || [ -z "${AWS_SECRET_ACCESS_KEY}" ] || [ -z "${AWS_SESSION_TOKEN}" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "motivo=secrets AWS ausentes ou incompletos (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN)" >> "$GITHUB_OUTPUT"
+          elif aws sts get-caller-identity >/dev/null 2>&1; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "motivo=credenciais AWS vencidas ou invalidas (sessao do Academy encerrada)" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.aws.outputs.enabled == 'true'
+        uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.10.x"
 
-      - name: terraform apply
+      - if: steps.aws.outputs.enabled == 'true'
+        name: terraform apply
         run: |
           terraform init -input=false
           terraform apply -input=false -auto-approve
+      - if: steps.aws.outputs.enabled != 'true'
+        name: Notice (AWS skipped)
+        run: echo "::notice::passos AWS pulados — ${{ steps.aws.outputs.motivo }}"
+

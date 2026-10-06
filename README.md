@@ -129,6 +129,10 @@ sete dias; depois disso, destrua EKS, NLB e VPC Link na ordem documentada.
   apply automático só na `main`: com um único Learner Lab e budget mínimo,
   ambiente homolog duplicado de infra é inviável (adendo do ADR-033).
 
+### Governança da `main`
+
+A `main` é protegida: só recebe mudança por pull request, com o check `gate` verde, e a regra vale também para administradores (force-push e exclusão bloqueados). O merge é sempre squash, com o número do PR no título. A política completa, como conferir a proteção sem permissão de administrador e a auditoria do histórico estão em [Disciplina de PR](https://github.com/fiap-postech-sw-architecture/postech-sw-arch-p3/blob/main/docs/governanca/disciplina-de-pr.md); a visão geral da fase 3 está no [índice da fase 3](https://github.com/fiap-postech-sw-architecture/postech-sw-arch-p3/blob/main/docs/fase3/README.md).
+
 ## Status e pendências
 
 - [x] **Provisionamento AWS** — `terraform apply` automático na `main` em
